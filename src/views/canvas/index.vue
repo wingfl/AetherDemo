@@ -232,10 +232,7 @@
             </div>
             <div class="count-select-wrapper">
               <select v-model="generateCount" class="count-select">
-                <option :value="1">1张</option>
-                <option :value="2">2张</option>
-                <option :value="3">3张</option>
-                <option :value="4">4张</option>
+                <option v-for="n in countOptions" :key="n" :value="n">{{ n }}张</option>
               </select>
             </div>
             <button class="generate-btn" :disabled="!hasMaskContent" @click="openAiParamsDialog">
@@ -297,15 +294,35 @@ const maskImageLoading = ref(false)
 
 // 新增：提示词、生成张数、模型选择、AI参数弹窗
 const promptText = ref('')
-const generateCount = ref(4)
-const selectedModel = ref('stable-diffusion-xl')
-const modelOptions = [
-  { value: 'stable-diffusion-xl', label: 'Stable Diffusion XL' },
-  { value: 'stable-diffusion-3', label: 'Stable Diffusion 3' },
-  { value: 'stable-diffusion-3-turbo', label: 'SD3 Turbo' },
-  { value: 'flux-1-dev', label: 'Flux.1 Dev' },
-  { value: 'flux-1-schnell', label: 'Flux.1 Schnell' },
-]
+const generateCount = ref(1)
+const selectedModel = ref('')
+
+// 模型列表（TODO: 替换为后端接口数据）
+const modelOptions = ref([
+  { value: 'stable-diffusion-xl', label: 'Stable Diffusion XL', maxCount: 4 },
+  { value: 'stable-diffusion-3', label: 'Stable Diffusion 3', maxCount: 2 },
+  { value: 'stable-diffusion-3-turbo', label: 'SD3 Turbo', maxCount: 1 },
+  { value: 'flux-1-dev', label: 'Flux.1 Dev', maxCount: 4 },
+  { value: 'flux-1-schnell', label: 'Flux.1 Schnell', maxCount: 3 },
+])
+
+// 当前模型支持的张数选项
+const currentModelConfig = computed(() => {
+  return modelOptions.value.find(m => m.value === selectedModel.value)
+})
+
+const countOptions = computed(() => {
+  const max = currentModelConfig.value?.maxCount || 1
+  return Array.from({ length: max }, (_, i) => i + 1)
+})
+
+// 切换模型时，如果当前张数超出新模型支持范围则自动回落
+watch(selectedModel, () => {
+  const max = currentModelConfig.value?.maxCount || 1
+  if (generateCount.value > max) {
+    generateCount.value = 1
+  }
+})
 
 // textarea 自动高度（最高 3 行后滚动）
 const autoResizeTextarea = () => {
@@ -891,6 +908,8 @@ const startEditing = (index) => {
   historyIndex.value = 0
   tempLine.value = null
   promptText.value = ''
+  selectedModel.value = modelOptions.value.length > 0 ? modelOptions.value[0].value : ''
+  generateCount.value = 1
 
   const img = new window.Image()
   img.onload = () => {
@@ -959,5 +978,4 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style scoped lang="scss" src="./index.scss">
-</style>
+<style scoped lang="scss" src="./index.scss"></style>
